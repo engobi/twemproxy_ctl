@@ -1,0 +1,90 @@
+#!/bin/sh -e
+
+### BEGIN INIT INFO
+# Provides:             Nutcracker
+# Required-Start:       $local_fs $remote_fs $network $time
+# Required-Stop:        $local_fs $remote_fs $network $time
+# Should-Start:         $syslog
+# Should-Stop:          $syslog
+# Default-Start:        2 3 4 5
+# Default-Stop:         0 1 6
+# Short-Description:    A fast, light-weight proxy for memcached and redis 
+### END INIT INFO
+
+# chkconfig: 2345 99 01
+# description Nutcracker a fast, light-weight roxy for memcached and redis
+
+
+#Installation prefix
+NCONF=/usr/local/etc/nutcracker/nutcracker.yml
+NLOG=/var/log/nutcracker/nutcracker.log
+NPIDFILE=/var/run/nutcracker.pid
+NULIMIT=32768
+NMEMORY=1024
+
+PATH=/usr/local/bin:/usr/bin:/bin
+
+NCMD=/usr/local/bin/nutcracker
+
+set -e
+
+test -x $NCMD || exit 0
+
+case $1 in 
+
+  start)
+	echo -n "Starting nutcracker: "
+	if [ -f $NPIDFILE ]; then
+		NPID=`cat $NPIDFILE`
+		if [ -d /proc/$NPID ]; then
+    			echo "Already started"
+			exit 0	
+		fi
+	fi
+	ulimit -n $NULIMIT
+	nutcracker -d -c $NCONF -o $NLOG -p $NPIDFILE -m $NMEMORY
+	echo "OK"
+	;;
+  stop)
+  	echo -n "Stopping nutcracker: "
+	if [ -f $NPIDFILE ]; then
+		NPID=`cat $NPIDFILE`
+		if [ -d /proc/$NPID ]; then
+			kill $NPID
+			echo "nutcracker ($NPID) succesfully stopped"
+    			echo "OK"
+		fi
+	else
+		echo "is not running"	
+	fi
+	;;
+  restart|reload)
+  	echo -n "Restarting nutcracker: "
+	if [ -f $NPIDFILE ]; then
+                NPID=`cat $NPIDFILE`
+                if [ -d /proc/$NPID ]; then
+                        kill $NPID
+                fi
+	fi
+	ulimit -n $NULIMIT
+        nutcracker -d -c $NCONF -o $NLOG -p $NPIDFILE -m $NMEMORY
+	echo "OK"
+ 	;;
+  status)
+  	echo -n "Status nutcracker: "
+	if [ -f $NPIDFILE ]; then
+                NPID=`cat $NPIDFILE`
+                if [ -d /proc/$NPID ]; then
+                        echo "is running"
+                fi
+	else
+                echo "is not running"
+        fi
+	;;
+  *)
+	echo "Usage: $0 {start|stop|restart|reload|status}" 1>&2
+	exit 1
+	;;
+esac
+
+exit 0
